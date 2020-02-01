@@ -5,119 +5,144 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
-    <title>疫情小区</title>
-    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css" />
     <style>
         html,
         body,
         #container {
-            height: 100%;
             width: 100%;
+            height: 100%;
         }
     </style>
+    <title>深圳疫情速览</title>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css" />
+    <script src="https://webapi.amap.com/maps?v=1.4.15&key=83ad33145bf78b5b1c1334f5912e9154&plugin=AMap.PolyEditor">
+    </script>
+    <script src="https://a.amap.com/jsapi_demos/static/demo-center/js/demoutils.js"></script>
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.0.js"></script>
+    <script src="community.js"></script>
+    <script src="china.js"></script>
 </head>
 
 <body>
     <div id="container"></div>
-    <div class="info" id="text">
-        请拖拽覆盖物试试
+    <div class="info">
+        <p>
+            <div id="ss" style="text-align: right; color: #2196F3;">收起</div>
+        </p>
+        <p id='status'></p>
+        <p id='result' style="display: none"></p>
+        <p style="color: blue"> 数据持续更新中---- </p>
+
     </div>
-    <div class="info" >
-        <a href="local.html">点位页面</a>
-    </div>
-    <div class="input-card" style="width:18rem">
-        <h4>覆盖物拖拽事件的绑定与解绑</h4>
-        <div>
-            <div class="input-item">
-                <button id="clickOn" class="btn" style="margin-right:1rem;">绑定事件</button>
-                <button id="clickOff" class="btn">解绑事件</button>
-            </div>
-        </div>
-    </div>
-    <script type="text/javascript" src="https://webapi.amap.com/maps?v=1.4.15&key=您申请的key值"></script>
-    <script src="https://a.amap.com/jsapi_demos/static/demo-center/js/demoutils.js"></script>
+
+
     <script type="text/javascript">
-        //初始化地图对象，加载地图
+        $.get("https://service-0gg71fu4-1252957949.gz.apigw.tencentcs.com/release/dingxiangyuan", function (data,
+            status) {
+            var areas = data["data"]["getAreaStat"];
+            var content = ""
+            for (var i = 0; i < areas.length; i++) {
+                if (areas[i]["provinceName"] == "广东省") {
+                    content = "<h5> 广东省</h5>" +
+                        "<p style=\"color: red\">确诊人数:" + areas[i]["confirmedCount"] + ", 疑似人数为:" + areas[i][
+                            "suspectedCount"
+                        ] + "</p>" +
+                        "<p>治愈人数为:" + areas[i]["curedCount"] + ", 死亡人数为:" + areas[i]["deadCount"] + "</p>";
+                    var cities = areas[i]["cities"];
+                    for (var j = 0; j < cities.length; j++) {
+                        if (cities[j]["cityName"] == "深圳") {
+                            content += "<h5> 深圳</h5>" +
+                                "<p style=\"color: red\">确诊人数:" + cities[j]["confirmedCount"] + ",疑似人数为:" +
+                                cities[j]["suspectedCount"] + "</p>" +
+                                "<p>治愈人数为:" + cities[j]["curedCount"] + ", 死亡人数为:" + cities[j]["deadCount"] +
+                                "</p>";
+                        }
+                    }
+                }
+            }
+            $("#status").html(content);
+        });
+
+
+        $("#ss").click(function () {
+            show_text = $("#ss").text()
+            if (show_text == "收起") {
+                $("#status").css({
+                    "display": "none"
+                });
+                $("#ss").text("展开")
+            } else {
+                $("#status").css({
+                    "display": "block"
+                });
+                $("#ss").text("收起")
+            }
+
+        })
+
         var map = new AMap.Map("container", {
-            resizeEnable: true
+            // resizeEnable: true
+            zoom: 15,
         });
-        var marker = new AMap.Marker({
-            map: map,
-            icon: "https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png",
-            position: [116.405467, 39.907761],
-            draggable: true
+
+        for (let index = 0; index < paths.length; index++) {
+            const element = paths[index];
+            var polygon = new AMap.Polygon({
+                path: element,
+                strokeColor: "#FF33FF",
+                strokeWeight: 6,
+                strokeOpacity: 0.2,
+                fillOpacity: 0.4,
+                fillColor: '#FF33FF',
+                zIndex: 50,
+            })
+            map.add(polygon)
+        }
+        AMap.plugin([
+            'AMap.ToolBar',
+        ], function () {
+            // 在图面添加工具条控件，工具条控件集成了缩放、平移、定位等功能按钮在内的组合控件
+            map.addControl(new AMap.ToolBar({
+                // 简易缩放模式，默认为 false
+                liteStyle: true
+            }));
         });
-        var lineArr = [
-            [116.368904, 39.913423],
-            [116.382122, 39.901176],
-            [116.387271, 39.912501],
-            [116.398258, 39.904600]
-        ];
-        var circle = new AMap.Circle({
-            map: map,
-            center: lineArr[0], //设置线覆盖物路径
-            radius: 1500,
-            strokeColor: "#3366FF", //边框线颜色
-            strokeOpacity: 0.3, //边框线透明度
-            strokeWeight: 3, //边框线宽
-            fillColor: "#FFA500", //填充色
-            fillOpacity: 0.35, //填充透明度
-            draggable: true
+
+        AMap.plugin('AMap.Geolocation', function () {
+            var geolocation = new AMap.Geolocation({
+                enableHighAccuracy: true, //是否使用高精度定位，默认:true
+                timeout: 10000, //超过10秒后停止定位，默认：5s
+                buttonPosition: 'LB', //定位按钮的停靠位置
+                buttonOffset: new AMap.Pixel(10, 20), //定位按钮与设置的停靠位置的偏移量，默认：Pixel(10, 20)
+                zoomToAccuracy: false, //定位成功后是否自动调整地图视野到定位点
+
+            });
+            map.addControl(geolocation);
+            geolocation.getCurrentPosition(function (status, result) {
+                if (status == 'complete') {
+                    onComplete(result)
+                } else {
+                    onError(result)
+                }
+            });
         });
-        var polygonArr = [
-            [116.403322, 39.920255],
-            [116.410703, 39.897555],
-            [116.402292, 39.892353],
-            [116.389846, 39.891365]
-        ];
-        var polygon = new AMap.Polygon({
-            map: map,
-            path: polygonArr, //设置多边形边界路径
-            strokeColor: "#FF33FF", //线颜色
-            strokeOpacity: 0.2, //线透明度
-            strokeWeight: 3, //线宽
-            fillColor: "#1791fc", //填充色
-            fillOpacity: 0.35, //填充透明度
-            draggable: true
-        });
-        map.setFitView();
-
-        function showInfoM(e) {
-            var text = '您拖拽了marker！'
-            document.querySelector("#text").innerText = text;
+        //解析定位结果
+        function onComplete(data) {
+            // document.getElementById('status').innerHTML = '定位成功'
+            // var str = [];
+            // str.push('定位结果：' + data.position);
+            // str.push('定位类别：' + data.location_type);
+            // if (data.accuracy) {
+            //     str.push('精度：' + data.accuracy + ' 米');
+            // } //如为IP精确定位结果则没有精度信息
+            // str.push('是否经过偏移：' + (data.isConverted ? '是' : '否'));
+            // document.getElementById('result').innerHTML = str.join('<br>');
         }
-
-        function showInfoC(e) {
-            var text = '您拖拽了圆！'
-            document.querySelector("#text").innerText = text;
+        //解析定位错误信息
+        function onError(data) {
+            // document.getElementById('status').innerHTML = '定位失败'
+            // document.getElementById('result').innerHTML = '失败原因排查信息:' + data.message;
         }
-
-        function showInfoP(e) {
-            var text = '您拖拽了多边形！'
-            document.querySelector("#text").innerText = text;
-        }
-
-        function clickOn() {
-            log.success("绑定事件!");
-
-            marker.on('dragging', showInfoM);
-            circle.on('dragging', showInfoC);
-            polygon.on('dragging', showInfoP);
-
-        }
-
-        function clickOff() {
-            log.success("解除事件绑定!");
-
-            marker.off('dragging', showInfoM);
-            circle.off('dragging', showInfoC);
-            polygon.off('dragging', showInfoP);
-
-        }
-
-        // 给按钮绑定事件
-        document.getElementById("clickOn").onclick = clickOn;
-        document.getElementById("clickOff").onclick = clickOff;
     </script>
 </body>
 
